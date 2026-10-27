@@ -1,0 +1,9 @@
+# Common point sampling for both sides of every pair (docs/protocol.md). Frozen at S0.
+# Refinement of the plan's fixed counts (4096 / 8192): both sides are sampled at the same voxel
+# density, so a descriptor cannot tell the modality from point spacing; counts are caps.
+voxel_mm: 3.0        # one point per 3 mm voxel (~ Sonata's 4 mm grid at 0.005 / mm and 0.02)
+max_partial: 8192
+max_ct: 32768        # caps only guard memory: TotalSeg livers have 1-20 k points at 3 mm (none capped)
+min_partial: 256     # views with fewer visible points are not used
+normal_k: 16
+ct_draws: 400000

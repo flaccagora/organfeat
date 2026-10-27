@@ -1,0 +1,50 @@
+# Training config (ofeat/train/run.py). Selection grids are listed here before the runs (docs/protocol.md §7).
+# Variants override keys on the command line: python -m ofeat.train.run --config base name=geo loss.use_vis=false
+name: base
+seed: 0
+data:
+  frac_livers: 1.0          # ablation: 0.25 / 0.5 / 1.0 of the 411 train livers
+  batch_size: 4             # livers per step
+  workers: 8
+  aug:
+    p_depth_noise: 0.5
+    sigma100_mm: [0.0, 1.5]
+    p_holes: 0.3
+    hole_frac: [0.0, 0.15]
+    min_overlap: 0.3
+    p_ct_crop: 0.0          # S1 diagnosis: CT crops (proposal: "overlapping crops")
+    ct_crop_mm: [60.0, 150.0]
+model:
+  arch: sonata              # sonata | ppf (strictly local point-pair-feature PointNet, S1 diagnosis)
+  ppf_radii: [10.0, 25.0]
+  ppf_k: 64
+  out_dim: 32
+  init: sonata              # sonata | scratch (ablation)
+  geom_radii: [6.0, 15.0]
+  enc_stages: 5             # S1 diagnosis: < 5 keeps the first encoder stages only
+  patch_size: null          # S1 diagnosis: attention patch (Sonata: 1024 points)
+loss:
+  use_vis: true             # false = geometry-only descriptor
+  tau: 0.07
+  pos_radius: 4.0
+  safe_radius: 12.0
+  n_anchor: 1024
+  lambda_cross: 1.0         # grid {0, 1}: cross-modal consistency L(vis <-> geo)
+  mu_pairs: 0.5             # grid {0, 0.5}: overlapping view pairs L(A <-> B)
+  vis_drop_sample: 0.5      # visual-modality dropout (0 = ablation "no dropout")
+  vis_drop_point: 0.1
+  photometric: true
+optim:
+  lr: 1.0e-4                # head, adapter, missing token (S1: 1e-3 + bf16 collapsed, docs/s1_findings.md)
+  encoder_lr: 2.0e-5        # grid {2e-5, 1e-4}; defreg P3 collapsed at 1e-4 (results 014)
+  weight_decay: 0.01
+  warmup_frac: 0.05
+  steps: 10000
+  grad_clip: 1.0
+  amp: false                # fp32 (S1); bf16 autocast runs spconv in fp16 kernels
+eval:
+  every: 1000               # proxy (mutual-NN inlier ratio on val) + checkpoint
+  livers: 20
+  views: 4
+  sigma100: 1.0             # proxy in the primary setting (docs/protocol.md section 5)
+  holes: 0.1

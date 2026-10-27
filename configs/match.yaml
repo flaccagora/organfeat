@@ -1,0 +1,12 @@
+# Fixed matching pipeline (docs/protocol.md). Frozen at S0, before any descriptor is trained or any
+# baseline is scored; identical for every descriptor. Do not tune.
+# Clouds: partial (source) -> CT (target), both mm, both at the common sampling (configs/points.yaml).
+mutual: true            # cosine mutual nearest neighbours in descriptor space
+ransac_n: 3
+ransac_dist_mm: 7.5     # inlier distance of RANSAC and of its distance checker
+edge_len: 0.9           # open3d CorrespondenceCheckerBasedOnEdgeLength
+max_iter: 100000
+confidence: 0.999
+icp_dist_mm: 5.0        # point-to-plane ICP, partial -> CT
+icp_iters: 50
+seed: 0

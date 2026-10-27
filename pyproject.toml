@@ -1,0 +1,75 @@
+[project]
+name = "ofeat"
+version = "0.0.1"
+description = "Self-supervised organ point features (geometry + lifted DINOv2) for partial-to-CT liver surface matching"
+readme = "CONTEXT.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy>=2.0",
+    "torch>=2.9,<2.10",  # flash-attn prebuilt wheels stop at torch 2.9
+    "torchvision>=0.24,<0.25",
+    "omegaconf>=2.3",
+    "trimesh>=4.4",
+    "plyfile>=1.1.5",
+    "opencv-python-headless>=4.10",
+    "scipy>=1.18.1",
+    "pandas>=3.0.6",
+    "pyarrow>=25.0.1",
+    "scikit-image>=0.26.0",
+    "scikit-learn>=1.7",
+    "open3d>=0.20.0",  # FPFH, RANSAC, ICP, raycasting
+    "transformers>=4.56",  # DINOv2 (with registers), weights pre-fetched to $HF_HOME
+    "kaggle>=1.7",  # P2I-LReg download (serial partition)
+    "wandb>=0.30.0",
+    "rerun-sdk>=0.38.1",
+    "nvdiffrast==0.4.0",  # local wheel, built on DCGP (sm_80), copied from correspondences/wheels
+]
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.11.2",
+    "setuptools>=64",
+    "wheel",
+    "ninja",
+    "pytest>=8",
+    "ruff>=0.6",
+]
+# PTv3 / Sonata encoder stack: prebuilt wheels only, never compiled on cluster nodes
+ptv3 = [
+    "spconv-cu126>=2.3.8",
+    "flash-attn==2.8.3",  # local wheel in wheels/
+    "timm>=1.0",
+    "addict>=2.4",
+    "huggingface-hub>=0.24",
+]
+
+[tool.uv]
+default-groups = ["dev", "ptv3"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+flash-attn = { path = "wheels/flash_attn-2.8.3-cp312-cp312-linux_x86_64.whl" }
+nvdiffrast = { path = "wheels/nvdiffrast-0.4.0-cp312-cp312-linux_x86_64.whl" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[build-system]
+requires = ["uv_build>=0.8,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# ROS Jazzy on the global PYTHONPATH registers pytest plugins that break collection
+addopts = "-p no:launch_testing -p no:launch_ros -p no:ament_copyright -p no:ament_flake8 -p no:ament_lint -p no:ament_pep257 -p no:ament_xmllint"
+markers = ["data: requires a downloaded dataset (skipped if missing)"]
+
+[tool.ruff]
+line-length = 110
+extend-exclude = ["ofeat/_vendor/sonata"]  # vendored third-party code

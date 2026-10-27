@@ -1,0 +1,9 @@
+source: >-
+  StereoMIS v0.0.1 split by animal, curated by eye from outputs/stereomis_sheets (2026-10-22).
+  Liver-dominant or liver-with-masks sequences only. The video side has a single training animal
+  (P2); P3 is the held-out animal for cross-animal stability and appearance shift. P1 (bowel/fat,
+  bag, resection) and P2_6..P2_8 (abdominal wall, bowel) show little or no liver.
+splits:
+  train: [P2_0, P2_1, P2_2, P2_3, P2_4, P2_5]
+  test: [P3]
+  excluded: [P1, P2_6, P2_7, P2_8]
