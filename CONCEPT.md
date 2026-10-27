@@ -77,6 +77,26 @@ flowchart LR
 *Only the blue boxes change between contenders. The pairing, voting and polishing steps are
 identical for every method tested.*
 
+### What this looks like on one example
+
+![A synthetic camera view, its partial 3D surface, the complete CT liver, and the view placed on it](docs/img/concept_partial_vs_ct.png)
+
+*One synthetic example (a validation liver that was never used for training):*
+1. *The virtual camera image, with a surgical tool in view.*
+2. *The partial 3D surface the method receives: about one point every 3 mm, coloured here by the
+   image. Pixels hidden by the tool, and the brightest glare, are left out.*
+3. *The complete CT liver: shape only. The method receives it as points at the same density.*
+4. *The answer the system has to find: the camera's patch sits on the front of the liver.*
+
+*Here both surfaces are drawn facing the same way so they are easy to compare. In the real task,
+each one arrives in an arbitrary, unknown orientation. In synthetic data the answer is known
+exactly; training and scoring both rely on that.*
+
+<!-- Figures (synthetic renders of public TotalSegmentator liver shapes, made by this project):
+     docs/img/synth_views_*.jpg: scripts/synth/make_views.py --set {val,test_tex_heldout} --preview N
+     docs/img/concept_partial_vs_ct.png: scripts/synth/concept_figure.py (val liver s0607, view 3) -->
+
+
 ---
 
 ## 3. Key Conceptual Building Blocks
@@ -90,6 +110,14 @@ Because every frame is rendered from the CT model, the studio knows *exactly* wh
 model every pixel shows. That free, perfect answer key is what makes the rest of the project
 possible. It also produces deliberately harder "stress" versions: noisier depth, unseen texture
 styles, more tools, slightly deformed organs, and views that show less than a tenth of the liver.
+
+![Synthetic laparoscopic views of three validation livers with their depth maps](docs/img/synth_views_val.jpg)
+
+*What the studio produces (three validation livers, never used for training). Each pair of rows is
+one liver: six virtual laparoscope views on top, with the matching depth maps below (brighter =
+farther; black = no surface or hidden by a tool). Viewpoint, texture, lighting, glare, smoke and
+the striped grey surgical tools are all randomised. Behind every pixel sits the exact CT point it
+shows.*
 
 ### 2. The Fingerprint Maker *(the learned descriptor)*
 This is the one thing the project actually changes. It takes a cloud of 3D surface points and
@@ -222,6 +250,13 @@ The design closes those loopholes:
 - textures are randomised and two whole texture families are held back, so the model can't memorise
   colours;
 - the CT side never gets fake colour.
+
+![Synthetic views of two test livers rendered with held-out stripe and cell textures](docs/img/synth_views_heldout_textures.jpg)
+
+*The held-back texture styles, stripes and cell-like patterns, on two test livers. Training used
+only cloudy, blotchy, vessel-like and smooth textures. The learned fingerprints kept their
+accuracy on these unseen styles, and the image benefit was unchanged, which is evidence that the
+model reads shape cues rather than memorising tissue patterns.*
 
 ### The core trade-off: big-picture vs. magnifying glass
 The two fingerprint designs exposed a real tension:
