@@ -18,7 +18,7 @@ were frozen before any training. A negative result counts as a valid outcome.
 
 ## Status (2026-10-26): S0–S4 done
 
-Study summary: [`docs/summary.md`](docs/summary.md).
+Study summary: [`docs/summary.md`](docs/summary.md). Venue assessment and plan to submission: [`docs/venue_assessment.md`](docs/venue_assessment.md), [`docs/submission_plan.md`](docs/submission_plan.md).
 
 | Stage | State | Headline |
 |---|---|---|
