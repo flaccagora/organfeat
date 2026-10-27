@@ -27,3 +27,13 @@ for q in P2_0 P2_1 P2_2 P2_3 P2_4 P2_5 P3; do
   cp -a --update=none "$SRC/processed/stereomis/$q/"{left,depth,tool,meta.json} "$DST/processed/stereomis/$q/"
 done
 du -sh "$D" "$DST/raw/stereomis" "$DST/processed/stereomis"
+
+# Deformed IRCAD (Neri et al. 2025, post-hoc external benchmark, docs/ext_ircad.md): the authors'
+# generator repo at its pinned commit 2d297f5 (README, Gen_Def_IRCAD.py, livers_ply = the 20
+# 3D-IRCADb-01 livers, CC BY-NC-ND 4.0) from defreg's raw data. Test sets are regenerated here
+# (scripts/external/gen_deformed_ircad.py), not copied.
+I=$DST/raw/deformed_ircad
+mkdir -p "$I"
+cp -a --update=none /leonardo_work/IscrC_FLAC/defreg/data/raw/deformed_ircad/repo/{README.md,Gen_Def_IRCAD.py,livers_ply} "$I/"
+echo "Alberto-Neri/Laparoscopic_Organ_Deformation_wARAP @ 2d297f5a05d14eb23b0bda60a2209e3779a751fd" > "$I/SOURCE.txt"
+du -sh "$I"

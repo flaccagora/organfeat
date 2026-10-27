@@ -10,7 +10,7 @@ oracle rigid stage) by studying the correspondence features a realistic rigid st
 Plan: docs/plan.md. Pre-registered protocol (metrics, thresholds, selection, locked sets): docs/protocol.md.
 
 **Status (2026-10-26): S0–S4 done.** Results are in docs/summary.md, with per-stage write-ups in
-docs/s*_*.md.
+docs/s*_*.md. Post-hoc external benchmarks (2026-10-27): docs/ext_ircad.md, docs/ext_p2i_syn.md.
 - Both locked sets (DePoLL, the 17 locked P2I-LReg cases) have been evaluated once. Never rerun them
   to compare new methods.
 - Final descriptors: `scripts/bench/final_descs.sh`. Arm A is fine-tuned Sonata; arm B is a local
@@ -23,7 +23,8 @@ docs/s*_*.md.
 | TotalSeg liver meshes (human CT) | data/processed/totalseg_meshes | synthetic training/val/test, official split (408/20/46; meshes < 300 ml excluded) |
 | StereoMIS (porcine, stereo, kinematics) | data/raw/stereomis, data/processed/stereomis | real RGB/geometry consistency (no CT); P2 train, P3 test |
 | DePoLL (porcine, CT + reconstruction + 60 markers) | data/raw/depoll | **locked** paired evaluation (marker TRE), run once |
-| P2I-LReg (human, Kaggle `junezhou001/p2i-lreg`) | data/raw/p2i_lreg | audit; dev subset + **locked** rest (decided at audit) |
+| P2I-LReg (human, Kaggle `junezhou001/p2i-lreg`) | data/raw/p2i_lreg | audit; dev subset + **locked** rest (decided at audit); its synthetic test renders: post-hoc external benchmark (docs/ext_p2i_syn.md) |
+| Deformed IRCAD (Neri et al. 2025 generator + 20 3D-IRCADb-01 livers, CC BY-NC-ND) | data/raw/deformed_ircad, data/processed/deformed_ircad | post-hoc external benchmark, test sets regenerated (docs/ext_ircad.md) |
 
 Locked sets raise `LockedDatasetError` unless `OFEAT_UNLOCK_EVAL=<name>` (final evaluation only).
 All data was copied from the correspondences project's scratch (scripts/download/copy_local.sh), not linked.

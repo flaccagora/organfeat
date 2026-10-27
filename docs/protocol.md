@@ -227,3 +227,31 @@ noise-free.
     consistency checks.
   - *Diagnostics added:* the number of mutual matches and how many fall in the overlap. In the
     first P3 run arm A had an inlier ratio of 0 in every bin while PPF did not.
+- 2026-10-27 (after S4; **post-hoc external benchmarks**, at the user's request): the final descriptors
+  are compared against two published setups. Nothing is selected or tuned on them: the descriptors,
+  `configs/match.yaml` and `configs/points.yaml` are unchanged.
+  - **Self-P2IR synthetic test split** (docs/ext_p2i_syn.md): the authors' `test_syn.txt` frames (2,800
+    renders of the 21 preoperative models, exact poses, no RGB) through `scripts/eval/p2i_syn_eval.py`.
+    These are frames of locked cases, so the run sets `OFEAT_UNLOCK_EVAL=p2i_lreg`. They are not
+    the locked real frames, and the locked real evaluation (docs/s4_p2i.md) is not rerun.
+  - **Neri et al. deformed IRCAD** (docs/ext_ircad.md): the paper's four crop ratios, regenerated with
+    the authors' generator (`scripts/external/gen_deformed_ircad.py`), scored with the paper's metrics
+    under its initial-pose range and under this project's random rigid poses.
+  - **Geometry only.** Neither set has images, so the multimodal checkpoints run geometry-only (`:geo`).
+  - **Null seeding fix.** The `random` null descriptor now seeds from crc32 instead of Python's
+    per-process `hash()`. Earlier null numbers (docs/s4_p2i.md) came from unseeded draws; they are
+    a null distribution either way.
+- 2026-10-27 (post hoc, after the deformed-IRCAD run, at the user's request "can we improve 5 %"):
+  **an extended pipeline for tiny partials**, `ofeat/match_ext.py`. `ofeat/match.py` is untouched, and
+  every pre-registered result uses it.
+  - **Selection.** On a deformed-IRCAD *dev* set: the paper's training livers 3–20, other seeds,
+    180 pairs at 5 % and 10 %. `scripts/sanity/ircad_small_patch.py`. Never on the test livers.
+  - **Diagnosis.** RANSAC scoring and iteration count are not the bottleneck: full 100k iterations
+    and consensus ranking ±5 points. In failures the descriptors give 0–3 correct matches, and 61–92 %
+    of the failed poses are flips beyond 75°.
+  - **Selected variant.** k = 3 nearest-descriptor matches, then torch RANSAC with the frozen
+    sampling and thresholds, overlap-ranked, and a rotation prior of at most 75°, then the frozen ICP.
+    It was best for every descriptor at both crop ratios. 75° comes from the generator's range
+    (≤ 71°), not tuned.
+  - **Use.** It is scored once on the test pairs (`ircad_eval.py --pipeline knn3_prior`, `given`
+    init only, since the prior is centred on the generator's poses).

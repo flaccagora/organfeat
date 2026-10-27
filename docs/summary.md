@@ -69,6 +69,29 @@ Protocol: `docs/protocol.md` (pre-registered, with dated deviations). Stage writ
    - Two causes: the provided monocular clouds are affine-like, not metric, and the reprojection
      metric is insensitive to errors of a surface-consistent pose. P2I-LReg as evaluated cannot
      separate descriptors (`docs/s4_p2i.md`).
+8. **External benchmarks** (post hoc, 2026-10-27; nothing tuned; geometry-only, since neither set has
+   images):
+   - **Deformed IRCAD, Neri et al. 2025** (regenerated with the authors' generator;
+     `docs/ext_ircad.md`).
+     - At 15 % and 25 % visibility every learned descriptor reaches the deformation floor: TRE
+       5.6–6.2 / 4.5 mm vs a GT residual of 5.4 / 5.1 mm. That beats every published method
+       (LiverMatch 6.4 / 4.8, Neri et al. 8.5 / 6.8 mm).
+     - At 10 %: 6.9–8.8 mm vs LiverMatch 7.9, an approximate comparison since the regenerated set
+       differs.
+     - At 5 % (175 points, below this project's own 256-point minimum) about half the pairs fail:
+       mean TRE 55–62 mm vs 19–27 mm published.
+     - Learned beats FPFH at 5–15 % (p ≤ 0.003). Random descriptors fail everywhere.
+     - **Post-hoc extension for 5 %.** Selected on dev livers 3–20, scored once: k-NN matches plus a
+       ≤ 75° rotation prior in RANSAC (`ofeat/match_ext.py`). Mean TRE halves to 24.5–30.8 mm (median
+       8–12.5) and success reaches 0.61–0.75. That is on par with Neri et al. / OMNet / Lepard
+       (22–27 mm), behind LiverMatch (18.7). No regression at 10–25 %. The failures were descriptor
+       flips, not RANSAC scoring.
+   - **P2I-LReg synthetic test split vs Self-P2IR Table I** (2,793 renders; `docs/ext_p2i_syn.md`).
+     - Registration recall is saturated: arm B 100.0 %, FPFH 99.9 %, arm A 98 %, vs Self-P2I 99.0 %.
+     - Random descriptors still register 29 %, so only the inlier ratio separates descriptors:
+       random 0.4 %, FPFH 19 %, arm A 38 %, arm B 72 % (top-1000) / 88 % (top-250), vs Self-P2I's
+       95–98 % under its own matcher.
+     - The synthetic split cannot see the real-frame failure (item 7).
 
 ## Answer to the research question
 - **On synthetic CT-rendered data:** self-supervised descriptors far outperform FPFH and frozen
@@ -82,6 +105,9 @@ Protocol: `docs/protocol.md` (pre-registered, with dated deviations). Stage writ
   P2I-LReg's reprojection metric does not separate the methods.
 - **Clinical CT-registration claims are not supported.** The positive evidence is synthetic plus
   real-video consistency.
+- **On published simulated benchmarks** (post hoc), the geometry-only learned descriptors through a
+  plain mutual-NN → RANSAC → ICP pipeline match or beat the published learned registration methods
+  whenever ≥ 10–15 % of the liver is visible, and fail below that.
 
 ## Limitations
 - **Training data:** human CT shapes only; porcine test data (StereoMIS, DePoLL).

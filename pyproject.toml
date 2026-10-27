@@ -23,6 +23,7 @@ dependencies = [
     "wandb>=0.30.0",
     "rerun-sdk>=0.38.1",
     "nvdiffrast==0.4.0",  # local wheel, built on DCGP (sm_80), copied from correspondences/wheels
+    "h5py>=3.12",
 ]
 
 [dependency-groups]

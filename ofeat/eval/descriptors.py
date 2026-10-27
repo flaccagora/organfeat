@@ -22,7 +22,7 @@ import numpy as np
 import torch
 
 from ofeat._vendor.geometry import fpfh
-from ofeat.eval.pairs import Pair
+from ofeat.eval.pairs import Pair, _seed
 from ofeat.features.lift import lift
 
 PCA_DIR = Path("outputs/pca")
@@ -96,7 +96,7 @@ def describe(name: str, pair: Pair, side: str) -> np.ndarray:
     `learned:<ckpt>:geo` forces geometry-only inference (same path as the CT side)."""
     x, n = (pair.P, pair.nP) if side == "src" else (pair.Q, pair.nQ)
     if name == "random":  # null reference: matches carry no information (metric calibration only)
-        rng = np.random.default_rng(hash((pair.subject, pair.view, side)) % 2 ** 32)
+        rng = np.random.default_rng(_seed(pair.subject, pair.view, side))  # crc32: stable across processes
         return rng.normal(size=(len(x), 32)).astype(np.float32)
     if name.startswith("learned:"):
         ckpt, _, mode = name[len("learned:"):].partition(":")

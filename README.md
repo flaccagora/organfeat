@@ -27,6 +27,7 @@ Study summary: [`docs/summary.md`](docs/summary.md).
 | **S2** multimodal descriptor | done | Recall is at ceiling. Images raise the inlier ratio: marginally for arm A, clearly for arm B ([s2](docs/s2_findings.md)). |
 | **S3** test, stress tests, ablations, StereoMIS | done | Test: learned 0.99–1.00 vs FPFH 0.67. Images help arm A by +3 % and arm B by +20 %, not via texture. Arm A does not transfer to real stereo; arm B does ([test](docs/s3_test.md), [stress](docs/s3_stress.md), [ablations](docs/s3_ablations.md), [StereoMIS](docs/s3_real_consistency.md)). |
 | **S4** locked DePoLL + P2I-LReg (run once) | done | DePoLL: no method registers, FPFH included. P2I-LReg: no descriptor beats a random-descriptor null ([DePoLL](docs/s4_depoll.md), [P2I-LReg](docs/s4_p2i.md), [log](docs/s4_locked.md)). |
+| **External** (post hoc) deformed IRCAD, P2I-LReg synthetic | done | IRCAD: at the deformation floor at 15–25 % visibility, beating published methods. At 5 %, a post-hoc pose-prior variant (`ofeat/match_ext.py`) halves TRE to the published range. P2I synthetic: recall saturated, 29 % even for random descriptors ([IRCAD](docs/ext_ircad.md), [P2I syn](docs/ext_p2i_syn.md)). |
 | **S5** write-up, release | — | |
 
 Both locked sets have been used. Never rerun them to compare new methods.
@@ -43,6 +44,7 @@ Both locked sets have been used. Never rerun them to compare new methods.
 | Descriptors | `ofeat/models/` | Arm A: fine-tuned Sonata/PTv3. Arm B: local PPF-PointNet. Both take a visual channel or a learned *missing* token. |
 | Extractor (deliverable) | `ofeat/models/infer.py` | Checkpoint → 32-d per-point descriptors. |
 | Real-data evaluation | `scripts/eval/` | StereoMIS frame-pair consistency; DePoLL marker TRE (locked); P2I-LReg mask Dice (dev / locked). |
+| External benchmarks | `scripts/eval/{ircad,p2i_syn}_eval.py`, `scripts/external/`, `scripts/bench/ext_report.py` | Deformed IRCAD (Neri et al. 2025; authors' generator) and P2I-LReg synthetic (Self-P2IR), with the papers' metrics. |
 
 ---
 
@@ -156,6 +158,19 @@ sbatch -J p2i_dev -t 02:00:00 scripts/leonardo/gpu_run.sbatch \
 # LOCKED, once, at S4 only:
 #   sbatch ... --export=ALL,OFEAT_UNLOCK_EVAL=depoll   scripts/leonardo/gpu_run.sbatch python scripts/eval/depoll_eval.py ...
 #   sbatch ... --export=ALL,OFEAT_UNLOCK_EVAL=p2i_lreg scripts/leonardo/gpu_run.sbatch python scripts/eval/p2i_eval.py --split locked ...
+```
+
+External benchmarks (post hoc; docs/ext_ircad.md, docs/ext_p2i_syn.md):
+```bash
+for r in 05 10 15 25; do  # deformed IRCAD test sets, authors' generator (seconds each)
+  sbatch -J gen_ircad scripts/leonardo/cpu.sbatch python scripts/external/gen_deformed_ircad.py \
+      --crop-ratio 0.$r --out data/processed/deformed_ircad/test_crop$r.h5
+done
+sbatch -J ext_ircad -t 02:00:00 scripts/leonardo/gpu_run.sbatch python scripts/eval/ircad_eval.py --run final --desc fpfh_r20 ...
+sbatch -J ext_p2isyn -t 03:00:00 --export=ALL,OFEAT_UNLOCK_EVAL=p2i_lreg scripts/leonardo/gpu_run.sbatch \
+    python scripts/eval/p2i_syn_eval.py --cases 01 02 03 04 05 06 07 --run final_g1 --desc fpfh_r20 ...
+python scripts/bench/ext_report.py --compact --ircad outputs/eval/ircad/final.parquet
+python scripts/bench/ext_report.py --p2i-syn outputs/eval/p2i_syn/final_g*.parquet
 ```
 
 ---
