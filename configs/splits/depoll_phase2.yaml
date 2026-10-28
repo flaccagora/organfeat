@@ -1,0 +1,8 @@
+source: >-
+  DePoLL states for phase 2 (docs/miccai_plan.md; decided with the user 2026-10-28, before any phase-2
+  method ran). dev: development and selection of the phase-2 method (M1-M3); test: the final phase-2
+  evaluation E5, run once at W10. All states were already seen by phase-1 methods (post hoc analyses
+  R3a, D1, D2), never by the phase-2 method or its tuning. DePoLL stays behind OFEAT_UNLOCK_EVAL=depoll.
+splits:
+  dev: ["01", "02", "03", "04"]
+  test: ["05", "06", "07", "08", "09", "10", "11", "12", "13"]

@@ -39,6 +39,13 @@ def root() -> Path:
     return data_root() / "raw" / "depoll"
 
 
+def phase2_states(split: str) -> list[str]:
+    """DePoLL states of the phase-2 split (configs/splits/depoll_phase2.yaml): "dev" 01-04, "test" 05-13."""
+    from ofeat.data.splits import load_split
+
+    return list(load_split("depoll_phase2")[split])
+
+
 def states() -> list[str]:
     require_unlocked("depoll")
     return [s for s in STATES if (root() / s / "markers" / "markers.yml").exists()]

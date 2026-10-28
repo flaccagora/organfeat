@@ -361,3 +361,41 @@ noise-free.
   - *Metrics.* As D1 / R2.
   - *Follow-up.* BCPD non-rigid refinement only if the rigid stage registers C2 / C3 (success ≥ 0.5),
     pre-registered separately then.
+
+## Phase 2 (MICCAI 2027 method paper), pre-registration, 2026-10-28
+Plan: docs/miccai_plan.md. User decisions (2026-10-28):
+- no MIDL submission
+- images out of the headline (an ablation at most)
+- DePoLL split by state: **dev 01–04, test 05–13**
+
+Everything below is fixed before any phase-2 method runs.
+- **Method.**
+  - *M1:* arm B (PPF-PointNet) retrained on TotalSeg train livers with simulated DePoLL-scale
+    deformation (rigid residual 10–40 mm).
+  - *M2:* isometry-consistent correspondence selection.
+  - *M3:* a robust consensus pose (no overlap or closest-point pose scoring), then ICP; optionally
+    BCPD.
+  - *Free parameters* (deformation range, positive radius, M2's r / ε / δ, M3's kernel) are set on
+    validation data only: synthetic val livers, P2P *train* subsets (we never train on MSD), IRCAD dev
+    (livers 3–20, dev seeds) and DePoLL dev states 01–04.
+- **Final evaluation, once, after the method is frozen (W10):**
+  - *E1:* synthetic large-deformation test (TotalSeg test livers).
+  - *E2:* deformed IRCAD, paper test livers 1–2 and v2.
+  - *E3:* P2P in silico test.
+  - *E4:* P2P in vitro.
+  - *E5:* DePoLL test states 05–13.
+  - *Metrics:* each benchmark's own (TRE / MAE for IRCAD; RMS-TRE per visibility bin for P2P; marker
+    TRE for DePoLL), plus success vs the oracle rigid fit.
+  - *Baselines:* FPFH, phase-1 pipelines, retrained LiverMatch, released LiverMatch / Lepard weights
+    on P2P, and published numbers.
+- **Gates.**
+  - *G0 (end of W2, feasibility):* with GT correspondences corrupted to 5–50 % inliers on simulated
+    DePoLL-scale deformation, M2 + M3 must recover the oracle rigid pose (success ≥ 0.8) at an inlier
+    ratio where overlap-scored RANSAC fails.
+  - *G1 (14 Dec, dev):* (a) beat the phase-1 pipeline and retrained LiverMatch on P2P-train subsets
+    and IRCAD dev; (b) DePoLL dev success ≥ 0.5, or TRE ≤ oracle + 10 mm on ≥ 50 % of poses. Scope
+    follows docs/miccai_plan.md.
+- **New external data.** P2P in silico / in vitro (Yang et al., JBHI 2025;
+  github.com/zixinyang9109/P2P), downloaded W0, licence checked before use.
+  - *P2P in silico test* and *in vitro* are test-only for us: never used for selection.
+  - *P2P in silico train* may be used for validation subsets, not for training.
