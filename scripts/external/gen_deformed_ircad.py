@@ -478,72 +478,83 @@ def main(crop_ratio, ply_dir, output_path, livers=(1, 2), per_liver=50, seed_bas
             for idx in range(N_dataset):
                 
                 #Fixed seed for testset
-                np.random.seed(seed_base+idx)  # ofeat: CLI (test: 7)
+                attempt = 0  # ofeat: redraw pairs whose visible set is smaller than N_cropped (see below)
+                while True:
+                    np.random.seed(seed_base + idx + 100000 * attempt)  # ofeat: CLI (test: 7); attempt 0 = original seed
                 
-                #Random for training
+                    #Random for training
 
-                print("Generating cloud ", idx)
+                    print("Generating cloud ", idx)
                 
-                # start_time = time.time()
+                    # start_time = time.time()
 
-                # Simulate a pressure if you want
-                press = False #for this work i didnt
-                if press:
-                    constraint_ids, constraint_pos, deformed_point_idxs = apply_pressure(coordinates, normals, anchors_idx, anchors_points)
-                    deformed_mesh = simplified_mesh.deform_as_rigid_as_possible(constraint_ids, constraint_pos, max_iter=50)
+                    # Simulate a pressure if you want
+                    press = False #for this work i didnt
+                    if press:
+                        constraint_ids, constraint_pos, deformed_point_idxs = apply_pressure(coordinates, normals, anchors_idx, anchors_points)
+                        deformed_mesh = simplified_mesh.deform_as_rigid_as_possible(constraint_ids, constraint_pos, max_iter=50)
                     
-                    deformed_points = np.asarray(deformed_mesh.vertices)
+                        deformed_points = np.asarray(deformed_mesh.vertices)
 
-                    anchors = np.asarray(simplified_mesh.vertices)[anchors_idx]
-                    deformed = np.asarray(simplified_mesh.vertices)[deformed_point_idxs] 
-                else:
-                    deformed_points = coordinates
-                    deformed_mesh = simplified_mesh
+                        anchors = np.asarray(simplified_mesh.vertices)[anchors_idx]
+                        deformed = np.asarray(simplified_mesh.vertices)[deformed_point_idxs] 
+                    else:
+                        deformed_points = coordinates
+                        deformed_mesh = simplified_mesh
 
-                # ========================== NON-RIGID DEFORMATION ==================================
-                # apply lobes deformation -> open the function to set the displacement amount and the control points
-                # I apply ARAP on the original, normalized point set, NOT on the subsampled!
-                constraint_ids, constraint_pos, deformed_point_idxs, where = lobes_deformation(deformed_points, anchors_idx, anchors_points)
+                    # ========================== NON-RIGID DEFORMATION ==================================
+                    # apply lobes deformation -> open the function to set the displacement amount and the control points
+                    # I apply ARAP on the original, normalized point set, NOT on the subsampled!
+                    constraint_ids, constraint_pos, deformed_point_idxs, where = lobes_deformation(deformed_points, anchors_idx, anchors_points)
 
-                # apply ARAP
-                deformed_mesh_fin = deformed_mesh.deform_as_rigid_as_possible(constraint_ids, constraint_pos, max_iter=50)
+                    # apply ARAP
+                    deformed_mesh_fin = deformed_mesh.deform_as_rigid_as_possible(constraint_ids, constraint_pos, max_iter=50)
                 
-                # Return deformed points
-                deformed_points_fin = np.asarray(deformed_mesh_fin.vertices)
+                    # Return deformed points
+                    deformed_points_fin = np.asarray(deformed_mesh_fin.vertices)
 
-                # Use this if you want to check the generated deformation 
-                # plot_double2(deformed_points, deformed_points_fin)
-                # ==============================================================================
-
-
-                # ========================== RIGID TRANSFORMATION ==============================
-                # Apply a random rigid transformation
-                deformed_points_fin_T, gt_T = random_transformer(deformed_points_fin, idx)
-                tgt_complete_def = deformed_points_fin_T
-                # plot_double2(tgt_complete_def, deformed_points_fin)
-                # ==============================================================================
+                    # Use this if you want to check the generated deformation 
+                    # plot_double2(deformed_points, deformed_points_fin)
+                    # ==============================================================================
 
 
-                # ===================================  VISIBLE CROP   ===========================
-                #select subsampled index
-                normals_sub = normals[subsampled_idx]
-                coordinates_sub = coordinates[subsampled_idx]
-                tgt_complete_def = deformed_points_fin_T[subsampled_idx]
+                    # ========================== RIGID TRANSFORMATION ==============================
+                    # Apply a random rigid transformation
+                    deformed_points_fin_T, gt_T = random_transformer(deformed_points_fin, idx)
+                    tgt_complete_def = deformed_points_fin_T
+                    # plot_double2(tgt_complete_def, deformed_points_fin)
+                    # ==============================================================================
+
+
+                    # ===================================  VISIBLE CROP   ===========================
+                    #select subsampled index
+                    normals_sub = normals[subsampled_idx]
+                    coordinates_sub = coordinates[subsampled_idx]
+                    tgt_complete_def = deformed_points_fin_T[subsampled_idx]
                 
-                #find virtual camera POV
-                rand_dir, radius = uniform_2_sphere_fixed(where)
-                centroid = np.mean(coordinates, axis=0)
-                pov = centroid + radius * rand_dir
+                    #find virtual camera POV
+                    rand_dir, radius = uniform_2_sphere_fixed(where)
+                    centroid = np.mean(coordinates, axis=0)
+                    pov = centroid + radius * rand_dir
 
-                max_normal_angle = 80
-                dot_products = np.einsum('ij,j->i', normals_sub, rand_dir) #|a|*|b|*cos(theta) = cos(theha), since a and b have norm=1
-                visibility_mask = dot_products > np.cos(np.radians(max_normal_angle))
+                    max_normal_angle = 80
+                    dot_products = np.einsum('ij,j->i', normals_sub, rand_dir) #|a|*|b|*cos(theta) = cos(theha), since a and b have norm=1
+                    visibility_mask = dot_products > np.cos(np.radians(max_normal_angle))
 
-                # Compute distances from the camera
-                distances = np.linalg.norm(coordinates_sub - pov, axis=1)  # Distance to camera POV. 
+                    # Compute distances from the camera
+                    distances = np.linalg.norm(coordinates_sub - pov, axis=1)  # Distance to camera POV. 
 
-                # I find the points that are visible from that POV. The calculations are done on the ORIGINAL cloud!!
-                visible_point_idx = apply_visibility_mask_crop2(distances, visibility_mask, coordinates_sub, N_cropped, i)
+                    # I find the points that are visible from that POV. The calculations are done on the ORIGINAL cloud!!
+                    visible_point_idx = apply_visibility_mask_crop2(distances, visibility_mask, coordinates_sub, N_cropped, i)
+                    if len(visible_point_idx) == N_cropped:
+                        break
+                    # ofeat: fewer visible points than N_cropped (the README's 'mismatch' case, e.g. some
+                    # livers at 25 %): redraw with a shifted seed; never triggered on the test / dev sets
+                    print(f"liver {i} pair {idx}: {len(visible_point_idx)} < {N_cropped} visible points, redraw")
+                    attempt += 1
+                    if attempt > 50:  # ofeat: this liver cannot supply N_cropped visible points: drop it
+                        print(f"FAILLIVER {i}", flush=True)
+                        raise SystemExit(3)
 
                 # Create the final mask
                 final_mask = np.zeros(len(coordinates_sub), dtype=bool)

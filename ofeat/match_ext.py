@@ -137,3 +137,53 @@ def register_prior(ps: np.ndarray, fs, pt: np.ndarray, ft, nt: np.ndarray, cfg: 
     nn = tgt[::k]
     m = Matches(nn=nn, src=src, tgt=tgt, conf=np.zeros(len(src)))  # no ratio-test confidence for k-NN matches
     return Registration(T_ransac=T_r, T=T, matches=m, n_ransac_inliers=n_in, seconds=sec)
+
+
+@torch.no_grad()
+def closest_pose_search(ps: np.ndarray, pt: np.ndarray, seeds: list[np.ndarray], step_deg: float = 22.5,
+                        max_deg: float = 75.0, iters: int = 20, max_src: int = 1024, max_tgt: int = 4096,
+                        seed: int = 0) -> tuple[np.ndarray, dict]:
+    """Deformation-tolerant local rigid search (D2; defreg OT-20's `ot_pose_search score="closest"`, here moving
+    the partial onto the CT). `seeds[0]` is the initial partial -> CT pose: a cubic rotation grid (spacing
+    `step_deg`, inside a ball of `max_deg`) about the partial's centroid at that pose gives the hypotheses; any
+    further seeds (e.g. descriptor registrations) are added as they are. Each hypothesis gets `iters` ICP updates
+    (every partial point -> its nearest CT point, Kabsch) and is scored by the mean nearest-CT distance; the best
+    pose is returned (follow it with the frozen ICP)."""
+    from scipy.spatial.transform import Rotation
+
+    dev = "cuda" if torch.cuda.is_available() else "cpu"
+    rng = np.random.default_rng(seed)
+    si = rng.choice(len(ps), max_src, replace=False) if len(ps) > max_src else np.arange(len(ps))
+    ti = rng.choice(len(pt), max_tgt, replace=False) if len(pt) > max_tgt else np.arange(len(pt))
+    n = int(np.floor(max_deg / step_deg + 1e-9))
+    r = np.arange(-n, n + 1, dtype=np.float64)
+    g = np.stack(np.meshgrid(r, r, r, indexing="ij"), -1).reshape(-1, 3) * step_deg
+    g = g[np.linalg.norm(g, axis=1) <= max_deg + 1e-9]
+    T0 = seeds[0]
+    x0 = apply(T0, ps[si])
+    c = x0.mean(0)
+    hyps = []
+    for v in np.radians(g):  # rotate the initial pose about the partial's centroid
+        D = np.eye(4)
+        D[:3, :3] = Rotation.from_rotvec(v).as_matrix()
+        D[:3, 3] = c - D[:3, :3] @ c
+        hyps.append(D @ T0)
+    hyps += list(seeds[1:])
+    H = torch.as_tensor(np.stack(hyps), dtype=torch.float32, device=dev)  # (K, 4, 4)
+    xs = torch.as_tensor(ps[si], dtype=torch.float32, device=dev)
+    y = torch.as_tensor(pt[ti], dtype=torch.float32, device=dev)
+    R, t = H[:, :3, :3], H[:, :3, 3]
+    for _ in range(iters):
+        x = xs[None] @ R.transpose(1, 2) + t[:, None]
+        j = torch.stack([torch.cdist(xk, y).argmin(-1) for xk in x])  # (K, N) nearest CT point
+        dR, dt = _kabsch_batch(x.double(), y[j].double())
+        dR, dt = dR.float(), dt.float()
+        R, t = dR @ R, (dR @ t[..., None])[..., 0] + dt
+    x = xs[None] @ R.transpose(1, 2) + t[:, None]
+    score = torch.stack([torch.cdist(xk, y).min(-1).values.mean() for xk in x])
+    k = int(torch.argmin(score))
+    T = np.eye(4)
+    T[:3, :3], T[:3, 3] = R[k].double().cpu().numpy(), t[k].double().cpu().numpy()
+    sc = np.sort(score.cpu().numpy())
+    return T, {"n_hyp": len(hyps), "best": k, "from_seed": bool(k >= len(g)), "score_mm": float(sc[0]),
+               "score_gap_mm": float(sc[1] - sc[0]) if len(sc) > 1 else 0.0}

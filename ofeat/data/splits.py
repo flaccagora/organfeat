@@ -16,7 +16,7 @@ from pathlib import Path
 
 from ofeat.mesh import REPO
 
-LOCKED = ("depoll", "p2i_lreg")
+LOCKED = ("depoll", "p2i_lreg", "ircad_v2")  # ircad_v2: docs/protocol.md, 2026-10-28
 SPLITS_DIR = REPO / "configs" / "splits"
 
 

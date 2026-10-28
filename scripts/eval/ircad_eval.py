@@ -66,6 +66,8 @@ def main() -> None:
     ap.add_argument("--desc", nargs="+", required=True)
     ap.add_argument("--run", default="final")
     ap.add_argument("--crops", nargs="+", type=int, default=list(deformed_ircad.CROPS))
+    ap.add_argument("--split", default="test", choices=["test", "v2", "dev"],
+                    help="v2: the locked 20-liver test (OFEAT_UNLOCK_EVAL=ircad_v2; docs/protocol.md 2026-10-28)")
     ap.add_argument("--init", nargs="+", default=["given", "so3"], choices=["given", "so3"])
     ap.add_argument("--max-pairs", type=int, default=None, help="per crop (smoke)")
     ap.add_argument("--pipeline", default="frozen", choices=["frozen", "knn3_prior"],
@@ -77,9 +79,9 @@ def main() -> None:
     cfg, pcfg = load_config(), points_config()
     rows = []
     for crop in a.crops:
-        for p in deformed_ircad.load(crop)[: a.max_pairs]:
+        for p in deformed_ircad.load(crop, a.split)[: a.max_pairs]:
             base = {"crop": crop, "idx": p.idx, "liver": p.liver, "n_partial": len(p.tgt), "n_ct": len(p.src),
-                    "pipeline": a.pipeline}
+                    "pipeline": a.pipeline, "split": a.split}
             rows.append({**base, "init": "-", "desc": "gt",
                          **deformed_ircad.paper_metrics(p.gt_T[:, :3], p.gt_T[:, 3], p)})
             for init in a.init:
@@ -104,7 +106,7 @@ def main() -> None:
                                  "tre_ransac_mm": ransac["tre_mm"], "mae_r_ransac_deg": ransac["mae_r_deg"]})
                 torch.cuda.empty_cache()
         print("crop", crop, "done", flush=True)
-    out = Path("outputs/eval/ircad")
+    out = Path("outputs/eval/ircad" if a.split == "test" else f"outputs/eval/ircad_{a.split}")
     out.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(rows)
     df.to_parquet(out / f"{re.sub(r'[^A-Za-z0-9_.+-]', '_', a.run)}.parquet")

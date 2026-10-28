@@ -59,18 +59,25 @@ class Extractor:
 
     @torch.no_grad()
     def __call__(self, xyz: np.ndarray, normals: np.ndarray, rgb: np.ndarray | None = None,
-                 pix: np.ndarray | None = None) -> np.ndarray:
+                 pix: np.ndarray | None = None, vis: np.ndarray | None = None,
+                 vis_ok: np.ndarray | None = None) -> np.ndarray:
+        """Image features either from one frame (rgb + pix) or precomputed per point (vis: (N, 64)
+        DINO-PCA-64, e.g. averaged over several views; vis_ok: (N,) False -> the missing vector)."""
         x = torch.as_tensor(xyz, dtype=torch.float32, device=self.device)
         x = x - x.mean(0)
         n = torch.as_tensor(normals, dtype=torch.float32, device=self.device)
         g = geom_features(x, n, self.radii)
-        vis = None
         if rgb is not None and self.visual is not None:
             img = torch.as_tensor(rgb, device=self.device).permute(2, 0, 1)[None].float() / 255
             tok = self.visual.tokens(img)[0]
             H, W = rgb.shape[:2]
             vis = self.visual.project(tok, torch.as_tensor(pix, device=self.device), (W, H))
+        elif vis is not None and self.visual is not None:
+            vis = torch.as_tensor(vis, dtype=torch.float32, device=self.device)
+        else:
+            vis = None
+        ok = None if vis_ok is None or vis is None else torch.as_tensor(vis_ok, dtype=torch.bool, device=self.device)
         torch.manual_seed(0)  # PTv3 draws its serialization-order shuffle from the global RNG
         with torch.autocast("cuda", dtype=torch.bfloat16, enabled=self.cfg["optim"].get("amp", True)):
-            z = self.model([x], [n], [g], [vis])[0]
+            z = self.model([x], [n], [g], [vis], [ok])[0]
         return z.float().cpu().numpy()

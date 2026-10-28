@@ -3,6 +3,31 @@
 Starting point: docs/venue_assessment.md, the five recommendations it ends with, and where the
 evidence stands today (docs/summary.md, docs/ext_ircad.md).
 
+## Status (2026-10-28)
+| item | result | doc |
+|---|---|---|
+| R2: IRCAD v2, 20 livers, locked | Learned beat FPFH on 20 / 20 livers at 5–15 % and 12–13 / 15 at 25 % (Holm p ≤ 0.003). Success 0.89–0.98 at 10–25 %. Livers 1–2 are easier than average. | docs/r2_ircad_v2.md |
+| R2: seed replicates | All results are seed-stable. The image effect replicates in every seed (arm B +17 % inlier ratio on 46 / 46 livers; StereoMIS +0.05 success). Arm A's StereoMIS gap is not a seed effect. | docs/r2_seeds.md |
+| **R3a: DePoLL whole reconstructions** | **Gate G1 not met:** best median TRE 65 mm (floor 15.6 mm), success ≈ 0 for every method. Learned beat random but are unusable. **Rule → framing B.** | docs/r3a_depoll_whole.md |
+| R3b: dataset survey | Only SERV-CT is new (real RGB + exact CT pose, liver close-ups); it needs a liver segmentation and has small views | docs/r3b_datasets.md |
+| **R4: lifting baselines** | `dinolift` alone 0.83 success (FPFH 0.67), below ours (0.99–1.00). But **geometry + both-sides lifting beats our image-trained models** (inlier ratio +31 % arm A, +13 % arm B; synthetic, no render domain gap). | docs/r4_lifting.md |
+| R5a: images on DePoLL | uninformative (everything fails) | docs/r3a_depoll_whole.md |
+| **D1: what breaks DePoLL** | **Real deformation.** On the undeformed porcine surface arm B and FPFH register 100 % (arm A 59–80 %). With the intraoperative CT surface of the same region (real deformation, clean surface) everything drops to ≤ 8 %. The video reconstruction adds nothing. | docs/d1_depoll_decompose.md |
+| **D2: deformation-tolerant pose search (defreg)** | Does **not** rescue deformed DePoLL (success ≤ 0.09). At the true pose the deformed surface fits *worse* (8.3 mm) than at wrong poses (4.0 mm) in 26 / 26 cases, so rigid registration is ill-posed there. On IRCAD v2, descriptor-seeded search is the best arm (5 %: 24.3 mm, success 0.81). | docs/d2_pose_search.md |
+| R1: LiverMatch retraining | code vendored (`external/livermatch`, MIT), training data generated, full training running (~5–9 h) | – |
+
+**Implications.**
+- **G1 picks framing B (evaluation paper) by the pre-registered rule.**
+- **R4 also weakens framing A's central claim.** The missing-modality design is not the best use of
+  images on our own synthetic benchmark.
+- **A method paper would need a new direction:**
+  - geometry descriptor + DINOv2 lifted on both sides (CT rendered), shown to survive the real
+    render-vs-frame gap, or
+  - a real dataset where the missing-modality design wins.
+
+  Neither is available today. **Decision for the user:** pursue framing B (MIDL, 4 Dec, or IJCARS),
+  or invest in the new direction for MICCAI.
+
 ## Target and timeline
 - **Main target:** MICCAI 2027 (Auckland). The deadline is not announced; we assume about
   **1 March 2027** and recheck in January.

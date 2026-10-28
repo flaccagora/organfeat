@@ -5,3 +5,8 @@ jobs/out/
 outputs/
 wheels/
 .pytest_cache/
+external/livermatch/snapshot/
+external/livermatch/cpp_wrappers/*/build/
+external/livermatch/cpp_wrappers/*/build.log
+kernels/
+external/livermatch/kernels/dispositions/

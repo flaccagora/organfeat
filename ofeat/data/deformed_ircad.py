@@ -26,13 +26,15 @@ import numpy as np
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
 
+from ofeat.data.splits import require_unlocked
 from ofeat.mesh import data_root
 
 CROPS = (5, 10, 15, 25)
 
 
 def path(crop: int, split: str = "test") -> Path:
-    """split "test": livers 1-2 (the paper's test set); "dev": livers 3-20 (its training livers, other
+    """split "test": livers 1-2 (the paper's test set); "v2": livers 1-20 x 25 pairs, seed base 9000, this
+    project's locked test (needs OFEAT_UNLOCK_EVAL=ircad_v2); "dev": livers 3-20 (its training livers, other
     seeds), for diagnosis and any selection, so the test pairs are scored once."""
     return data_root() / "processed" / "deformed_ircad" / f"{split}_crop{crop:02d}.h5"
 
@@ -76,6 +78,9 @@ def src_normals(liver: int, src: np.ndarray) -> np.ndarray:
 
 def load(crop: int, split: str = "test") -> list[IrcadPair]:
     import h5py
+
+    if split == "v2":
+        require_unlocked("ircad_v2")
 
     with h5py.File(path(crop, split), "r") as f:
         z = {k: f[k][:] for k in f}

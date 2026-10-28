@@ -255,3 +255,109 @@ noise-free.
     (≤ 71°), not tuned.
   - **Use.** It is scored once on the test pairs (`ircad_eval.py --pipeline knn3_prior`, `given`
     init only, since the prior is centred on the generator's poses).
+- 2026-10-28 (**pre-registration for the submission workstreams**, docs/submission_plan.md; written
+  before any of these runs). All four are post hoc relative to the original study, so the original
+  locked results stay as reported.
+  - **R2: IRCAD v2, this project's new locked test.**
+    - *Data.* `gen_deformed_ircad.py --livers 1..20 --per-liver 25 --seed-base 9000` at 5 / 10 / 15 /
+      25 % → `data/processed/deformed_ircad/v2_crop*.h5`, 500 pairs per crop. Locked behind
+      `OFEAT_UNLOCK_EVAL=ircad_v2`, and run once per descriptor.
+    - *Methods.* FPFH r20, frozen Sonata, A_geo, A_mm:geo, B_geo, B_mm:geo, the random null, and the
+      seed-1/2 replicates of the four learned models.
+    - *Pipelines.* The frozen one (`given` and `so3`) and `match_ext` (`given`).
+    - *Metrics.* As docs/ext_ircad.md (paper metrics; success vs the oracle rigid fit).
+    - *Statistics.* The unit is the liver: per-liver means, 95 % bootstrap CIs over livers (10,000
+      resamples). The primary comparison is B_geo vs FPFH and A_geo vs FPFH on per-liver mean TRE,
+      paired Wilcoxon over the 20 livers, Holm-corrected across the 4 crops (`given`, frozen
+      pipeline).
+    - *Caveat.* `match_ext` was selected on dev pairs of livers 3–20 (other seeds), so its numbers on
+      livers 3–20 are flagged.
+  - **R2: training-seed replicates.** The four final models retrained with seeds 1 and 2, with the
+    original overrides and 10k steps. Each replicate is taken at the step selected for seed 0 (A_geo
+    8000, A_mm 10000, B_geo 8000, B_mm 8000), with no new selection. Reported as mean ± SD over the 3
+    seeds.
+  - **R3a: DePoLL whole reconstructions** (post hoc; DePoLL is spent; the protocol of Neri et al. and
+    Huang et al.).
+    - *Partial.* Each state's `video_reconstruction.ply` as provided, at 3 mm voxels (cap 8,192). A
+      secondary variant keeps only probe-liver points: the union over the 24 S4 views.
+    - *CT.* The reference surface, sampled as `configs/points.yaml`.
+    - *Initial poses.* 20 per state, in two settings: `bounded` (oracle pose perturbed by each Euler
+      angle ≤ 45° and translation ≤ 50 mm) and `so3` (independent random rigid transforms).
+    - *Metrics.* As S4: marker TRE (60 markers; balls and clips also separately), oracle TRE, success
+      (TRE ≤ oracle + 10 mm), RRE / RTE vs the oracle.
+    - *Methods.* FPFH r20, A_geo, A_mm:geo, B_geo, B_mm:geo, the random null; frozen pipeline and
+      `match_ext` (`bounded` only).
+    - *Gate G1, fixed now:* framing A if the best learned descriptor has median TRE ≤ 15 mm over
+      states × poses in either setting **and** beats the random null (paired Wilcoxon over states ×
+      poses, p < 0.05). Otherwise framing B.
+  - **R5a: images on DePoLL.** Under R3a, A_mm vs A_mm:geo and B_mm vs B_mm:geo, paired over states ×
+    poses.
+    - DINOv2 features of the reconstruction come from the 24 S4 renders of the coloured
+      reconstruction, lifted per view and averaged per point. This is a different lifting from
+      training, which uses one view.
+    - DePoLL ships no camera trajectory, so real frames cannot be used.
+  - **R4: lifting baselines** (post hoc on the S3 synthetic test, primary setting σ 1 mm with 10 %
+    holes, plus the flat-albedo stress set).
+    - `dinolift`: DINOv2 PCA-64 lifted on both sides. The partial is lifted from its frame. The CT is
+      the untextured mesh rendered with flat albedo from 32 anterior-hemisphere views (training
+      camera model), lifted per view and averaged per point.
+    - `fpfh_r20+dinolift` and `<learned geo>+dinolift`: equal-weight concatenations.
+    - Compared with A_mm / B_mm (images on the partial only) on inlier ratio and success, paired
+      Wilcoxon over test livers.
+- 2026-10-28 (**IRCAD v2 generation**, before any descriptor ran on it).
+  - **5 / 10 / 15 %:** generated as pre-registered (20 livers × 25 pairs) with no failures.
+  - **25 % (875 points):** some draws see fewer than 875 points, the generator README's "mismatch"
+    case, and the authors' generator then crashes.
+  - **Change to the generator copy:** a failing draw is redrawn with seed `seed_base + idx +
+    100000·attempt`. Attempt 0 is the original seed, so every set that never failed is unchanged:
+    the paper's 15 % test set regenerates byte-identically. A liver with no valid draw in 50
+    attempts is dropped from that crop.
+  - **Result at 25 %:** livers 4, 8, 9, 13 and 17 cannot provide 25 % visibility under the
+    generator's camera model and are excluded. The other 15 livers × 25 pairs needed 365 redraws.
+  - **Caveat:** redrawn pairs are biased towards wider views, so the 25 % set covers 15 livers and is
+    reported as such.
+- 2026-10-28 (**post hoc diagnostics**, at the user's request, before running).
+  - **D: what breaks DePoLL?** All three conditions use the same visible region, the footprint of
+    each state's video reconstruction, and the same target, the porcine reference CT (as R3a).
+    - *C1 (shape only):* the reference surface itself, resampled. The footprint is the nearest
+      reference points of the oracle-aligned reconstruction, dilated 6 mm. No deformation;
+      ground-truth pose identity; oracle TRE 0.
+    - *C2 (+ real deformation):* that state's intraoperative CT surface (`surface_CT.ply`,
+      reconstruction frame), points within 5 mm of the reconstruction.
+    - *C3 (+ reconstruction quality):* the video reconstruction, as R3a `full`.
+    - *Run:* geometry-only descriptors (FPFH, A_geo, A_mm:geo, B_geo, B_mm:geo, random). 20 poses
+      per state, `bounded` and `so3`. Frozen pipeline, plus `match_ext` with `bounded`. Metrics as
+      R3a.
+    - *Reading:* C1 failing points to the species / shape (or region) gap; C1 → C2 isolates real
+      deformation; C2 → C3 isolates reconstruction quality.
+  - **R1 fallback: LiverMatch retrained on deformed IRCAD** (the authors had not replied).
+    - *Training:* the upstream LiverMatch code (Yang et al.) on generator pairs of livers 3–20,
+      seed base 20000. 140 pairs per liver at each of the 5 / 10 / 15 / 25 % crop ratios (≤ 560
+      per liver, matching the paper's 560 per liver; livers that cannot reach 25 % are dropped
+      there). Upstream hyper-parameters, from scratch.
+    - *Selection (correction 2026-10-28, before training):* upstream keeps the checkpoint with the
+      best *training* loss, and that is what is used. All 18 livers train, as in the paper; there is
+      no held-out validation.
+    - *Evaluation:* the paper's test pairs (livers 1–2; `test_crop*.h5`) and the livers 1–2 subset
+      of IRCAD v2, with the paper's metrics. Two pipelines: LiverMatch's own matches → Open3D RANSAC
+      → ICP (as Neri et al.), and LiverMatch features through our fixed pipeline.
+    - *Check:* at 15 % the retrained model should land near the paper's LiverMatch (6.4 mm) before
+      it is used as a baseline.
+- 2026-10-28 (**D2: a deformation-tolerant rigid stage**, at the user's request, before running; post
+  hoc).
+  - *Method.* defreg's closest-point pose search (defreg OT-20, `ot_pose_search score="closest"`),
+    re-implemented in `ofeat/match_ext.py` (partial → CT direction):
+    - hypotheses = a cubic rotation grid (22.5° spacing, inside a 75° ball, so 155 rotations) about
+      the partial's centroid at the initial pose, plus optional descriptor seeds (the poses of the
+      frozen pipeline and `match_ext` for that descriptor)
+    - each hypothesis gets 20 ICP updates (every partial point → nearest CT point, Kabsch) on ≤ 1,024
+      partial and ≤ 4,096 CT points
+    - the hypothesis with the lowest mean nearest-CT distance is kept, then the frozen ICP runs
+  - *Arms.* `search` (grid only, descriptor-free) and `search+<desc>` (grid + seeds from FPFH, A_geo,
+    B_geo).
+  - *Data.* `bounded` init only (the search is local):
+    - DePoLL C1 / C2 / C3, with D1's poses (13 states × 20)
+    - IRCAD v2, `given` init, once (it is locked)
+  - *Metrics.* As D1 / R2.
+  - *Follow-up.* BCPD non-rigid refinement only if the rigid stage registers C2 / C3 (success ≥ 0.5),
+    pre-registered separately then.
